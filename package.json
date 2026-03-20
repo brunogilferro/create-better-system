@@ -1,0 +1,12 @@
+{
+    "name": "create-better-system",
+    "bin": {
+      "create-better-system": "index.js"
+    },
+    "type": "module",
+    "dependencies": {
+      "inquirer": "^9.0.0",
+      "execa": "^8.0.0",
+      "fs-extra": "^11.0.0"
+    }
+  }
