@@ -26,6 +26,19 @@ const THEME_PRESETS = {
   },
 }
 
+// Converts a font name like "Open Sans" to the Next.js import format "Open_Sans"
+function toNextFontName(fontName) {
+  return fontName.trim().replace(/\s+/g, '_')
+}
+
+// Converts a font name to a valid JS variable name: "Open Sans" → "openSans"
+function toVarName(fontName) {
+  const words = fontName.trim().split(/\s+/)
+  return words
+    .map((w, i) => (i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join('')
+}
+
 function colorTable(colors) {
   return [
     '| Token                | Value                | Usage                |',
@@ -85,10 +98,12 @@ const projectPath = path.resolve(process.cwd(), projectName)
 
 const isBoth = answers.theme === 'both'
 const isDark = answers.theme === 'dark'
-
-const defaultColors = isBoth || isDark ? THEME_PRESETS.light : THEME_PRESETS.light
 const rootColors = isBoth ? THEME_PRESETS.light : (isDark ? THEME_PRESETS.dark : THEME_PRESETS.light)
 const darkColors = THEME_PRESETS.dark
+
+// Font helpers
+const headingFontNextName = toNextFontName(answers.headingFont)
+const headingFontVarName = toVarName(answers.headingFont) + 'Font'
 
 // ─── Clone template ───────────────────────────────────────────────────────────
 
@@ -97,6 +112,27 @@ await execa('npx', ['degit', 'brunogilferro/better-system', projectName], {
   stdio: 'inherit',
 })
 
+// ─── Update layout.tsx with heading font ─────────────────────────────────────
+
+console.log('🔤 Configuring fonts...')
+
+const layoutPath = path.join(projectPath, 'apps', 'frontend', 'app', 'layout.tsx')
+let layout = await fs.readFile(layoutPath, 'utf-8')
+
+layout = layout
+  .replace(
+    '// __HEADING_FONT_IMPORT__',
+    `import { ${headingFontNextName} } from "next/font/google"`
+  )
+  .replace(
+    '// __HEADING_FONT_DECLARATION__',
+    `const ${headingFontVarName} = ${headingFontNextName}({\n  variable: "--font-heading",\n  subsets: ["latin"],\n  weight: ["400", "500", "700"],\n})`
+  )
+  .replaceAll('__HEADING_FONT_CLASS__', `\${${headingFontVarName}.variable}`)
+  .replaceAll('__PROJECT_NAME__', projectName)
+
+await fs.writeFile(layoutPath, layout)
+
 // ─── Fill globals.css placeholders ───────────────────────────────────────────
 
 console.log('💅 Configuring CSS variables...')
@@ -104,7 +140,6 @@ console.log('💅 Configuring CSS variables...')
 const cssPath = path.join(projectPath, 'apps', 'frontend', 'app', 'globals.css')
 let css = await fs.readFile(cssPath, 'utf-8')
 
-// Root (default theme) token replacements
 const cssReplacements = {
   '__HEADING_FONT__': answers.headingFont,
   '__BODY_FONT__': 'Inter',
@@ -125,7 +160,6 @@ for (const [placeholder, value] of Object.entries(cssReplacements)) {
 }
 
 if (isBoth) {
-  // Fill dark theme block placeholders
   const darkReplacements = {
     '__DARK_BG_PRIMARY__': darkColors.bgPrimary,
     '__DARK_BG_SECONDARY__': darkColors.bgSecondary,
@@ -135,23 +169,16 @@ if (isBoth) {
     '__DARK_BORDER_PRIMARY__': darkColors.borderPrimary,
     '__DARK_BORDER_SECONDARY__': darkColors.borderSecondary,
   }
-
   for (const [placeholder, value] of Object.entries(darkReplacements)) {
     css = css.replaceAll(placeholder, value)
   }
-
-  // Remove the comment markers but keep the .dark block
   css = css.replace('/* DARK_THEME_BLOCK_START */', '').replace('/* DARK_THEME_BLOCK_END */', '')
 } else {
-  // Remove the entire dark theme block (between markers inclusive)
   css = css.replace(
     /\/\* DARK_THEME_BLOCK_START \*\/[\s\S]*?\/\* DARK_THEME_BLOCK_END \*\//,
     ''
   )
 }
-
-// For dark-only: also set @custom-variant to .dark class based (already set by default)
-// For light-only: nothing extra needed
 
 await fs.writeFile(cssPath, css)
 
@@ -178,8 +205,6 @@ if (isBoth) {
   colorsSection = `## Colors — ${label}\n\n${colorTable(rootColors)}`
 }
 
-const cssBlock = isBoth ? 'Both light and dark — see globals.css' : `Single theme (${answers.theme})`
-
 const figmaReplacements = {
   '__THEME_MODE__': answers.theme,
   '__HEADING_FONT__': answers.headingFont,
@@ -188,7 +213,7 @@ const figmaReplacements = {
   '__ACCENT_PRIMARY_HOVER__': answers.accentPrimary,
   '__ACCENT_SECONDARY__': answers.accentSecondary,
   '__COLORS_SECTION__': colorsSection,
-  '__CSS_BLOCK__': cssBlock,
+  '__CSS_BLOCK__': isBoth ? 'Both light and dark — see globals.css' : `Single theme (${answers.theme})`,
 }
 
 for (const [placeholder, value] of Object.entries(figmaReplacements)) {
