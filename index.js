@@ -252,6 +252,14 @@ const rootPkg = await fs.readJson(rootPkgPath)
 rootPkg.name = projectName
 await fs.writeJson(rootPkgPath, rootPkg, { spaces: 2 })
 
+// ─── Git init ─────────────────────────────────────────────────────────────────
+
+console.log('🗂️  Initializing git repository...')
+
+await execa('git', ['init'], { cwd: projectPath })
+await execa('git', ['add', '.'], { cwd: projectPath })
+await execa('git', ['commit', '-m', 'init: better system'], { cwd: projectPath })
+
 // ─── Done ─────────────────────────────────────────────────────────────────────
 
 console.log(`\n✅ Project "${projectName}" created!`)
@@ -264,4 +272,6 @@ if (isBoth) {
 console.log(`\nNext steps:`)
 console.log(`  cd ${projectName}`)
 console.log(`  pnpm install`)
-console.log(`  pnpm dev\n`)
+console.log(`  pnpm dev`)
+console.log(`\nTo push to GitHub:`)
+console.log(`  gh repo create ${projectName} --private --source=. --push\n`)
