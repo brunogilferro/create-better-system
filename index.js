@@ -4,6 +4,7 @@ import inquirer from 'inquirer'
 import { execa } from 'execa'
 import fs from 'fs-extra'
 import path from 'path'
+import crypto from 'crypto'
 
 const THEME_PRESETS = {
   dark: {
@@ -236,8 +237,7 @@ const envPath = path.join(backendPath, '.env')
 
 await fs.copy(envExamplePath, envPath)
 
-const { stdout: appKey } = await execa('node', ['ace', 'generate:key'], { cwd: backendPath })
-const generatedKey = appKey.trim().split('\n').pop().trim()
+const generatedKey = crypto.randomBytes(32).toString('base64url')
 
 let envContent = await fs.readFile(envPath, 'utf-8')
 envContent = envContent.replace('APP_KEY=', `APP_KEY=${generatedKey}`)
