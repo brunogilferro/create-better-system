@@ -119,14 +119,18 @@ console.log('🔤 Configuring fonts...')
 const layoutPath = path.join(projectPath, 'apps', 'frontend', 'app', 'layout.tsx')
 let layout = await fs.readFile(layoutPath, 'utf-8')
 
+const isInterHeading = headingFontNextName === 'Inter'
+
 layout = layout
   .replace(
     '// __HEADING_FONT_IMPORT__',
-    `import { ${headingFontNextName} } from "next/font/google"`
+    isInterHeading ? '' : `import { ${headingFontNextName} } from "next/font/google"`
   )
   .replace(
     '// __HEADING_FONT_DECLARATION__',
-    `const ${headingFontVarName} = ${headingFontNextName}({\n  variable: "--font-heading",\n  subsets: ["latin"],\n  weight: ["400", "500", "700"],\n})`
+    isInterHeading
+      ? `const ${headingFontVarName} = Inter({\n  variable: "--font-heading",\n  subsets: ["latin"],\n  weight: ["400", "500", "700"],\n})`
+      : `const ${headingFontVarName} = ${headingFontNextName}({\n  variable: "--font-heading",\n  subsets: ["latin"],\n  weight: ["400", "500", "700"],\n})`
   )
   .replaceAll('__HEADING_FONT_CLASS__', `\${${headingFontVarName}.variable}`)
   .replaceAll('__PROJECT_NAME__', projectName)
@@ -221,6 +225,23 @@ for (const [placeholder, value] of Object.entries(figmaReplacements)) {
 }
 
 await fs.writeFile(figmaRulesPath, figmaRules)
+
+// ─── Setup backend .env ───────────────────────────────────────────────────────
+
+console.log('🔑 Generating APP_KEY...')
+
+const backendPath = path.join(projectPath, 'apps', 'backend')
+const envExamplePath = path.join(backendPath, '.env.example')
+const envPath = path.join(backendPath, '.env')
+
+await fs.copy(envExamplePath, envPath)
+
+const { stdout: appKey } = await execa('node', ['ace', 'generate:key'], { cwd: backendPath })
+const generatedKey = appKey.trim().split('\n').pop().trim()
+
+let envContent = await fs.readFile(envPath, 'utf-8')
+envContent = envContent.replace('APP_KEY=', `APP_KEY=${generatedKey}`)
+await fs.writeFile(envPath, envContent)
 
 // ─── Update root package.json ─────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 {
     "name": "create-better-system",
+    "version": "1.0.0",
     "bin": {
       "create-better-system": "index.js"
     },
