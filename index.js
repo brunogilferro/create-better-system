@@ -7,6 +7,15 @@ import path from 'path'
 import crypto from 'crypto'
 import ora from 'ora'
 
+// ─── Node version check ───────────────────────────────────────────────────────
+
+const MIN_NODE = 20
+const currentMajor = parseInt(process.versions.node.split('.')[0], 10)
+if (currentMajor < MIN_NODE) {
+  console.error(`\n❌ Node.js ${MIN_NODE}+ required. You are running ${process.versions.node}.\n`)
+  process.exit(1)
+}
+
 const THEME_PRESETS = {
   dark: {
     bgPrimary: '#0a0e16',
@@ -268,6 +277,31 @@ await execa('git', ['add', '.'], { cwd: projectPath })
 await execa('git', ['commit', '-m', 'init: better system'], { cwd: projectPath })
 spinnerGit.succeed('Git repository initialized')
 
+// ─── Ensure pnpm is available ─────────────────────────────────────────────────
+
+try {
+  await execa('pnpm', ['--version'], { stdio: 'pipe' })
+} catch {
+  const spinnerPnpm = ora('pnpm not found — installing via npm...').start()
+  try {
+    await execa('npm', ['install', '-g', 'pnpm'], { stdio: 'pipe' })
+    spinnerPnpm.succeed('pnpm installed')
+  } catch {
+    spinnerPnpm.fail('Could not install pnpm. Install it manually: npm install -g pnpm')
+    process.exit(1)
+  }
+}
+
+// ─── pnpm install ─────────────────────────────────────────────────────────────
+
+const spinnerInstall = ora('Installing dependencies...').start()
+try {
+  await execa('pnpm', ['install'], { cwd: projectPath, stdio: 'pipe' })
+  spinnerInstall.succeed('Dependencies installed')
+} catch {
+  spinnerInstall.fail('pnpm install failed — run it manually: cd ' + projectName + ' && pnpm install')
+}
+
 // ─── Done ─────────────────────────────────────────────────────────────────────
 
 console.log(`\n✅ Project "${projectName}" created!`)
@@ -279,7 +313,6 @@ if (isBoth) {
 
 console.log(`\nNext steps:`)
 console.log(`  cd ${projectName}`)
-console.log(`  pnpm install`)
 console.log(`  pnpm dev`)
 console.log(`\nTo push to GitHub:`)
 console.log(`  gh repo create ${projectName} --private --source=. --push\n`)
