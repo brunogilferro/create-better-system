@@ -9,7 +9,7 @@ import ora from 'ora'
 
 // ─── Node version check ───────────────────────────────────────────────────────
 
-const MIN_NODE = 22
+const MIN_NODE = 24
 const currentMajor = parseInt(process.versions.node.split('.')[0], 10)
 if (currentMajor < MIN_NODE) {
   console.error(`\n❌ Node.js ${MIN_NODE}+ required. You are running ${process.versions.node}.\n`)
