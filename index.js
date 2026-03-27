@@ -5,6 +5,7 @@ import { execa } from 'execa'
 import fs from 'fs-extra'
 import path from 'path'
 import crypto from 'crypto'
+import ora from 'ora'
 
 const THEME_PRESETS = {
   dark: {
@@ -108,14 +109,20 @@ const headingFontVarName = toVarName(answers.headingFont) + 'Font'
 
 // ─── Clone template ───────────────────────────────────────────────────────────
 
-console.log('\n📦 Cloning Better System template...')
-await execa('npx', ['degit', 'brunogilferro/better-system', projectName], {
-  stdio: 'inherit',
-})
+const spinnerClone = ora('Cloning Better System template...').start()
+try {
+  await execa('npx', ['degit', 'brunogilferro/better-system', projectName], {
+    stdio: 'pipe',
+  })
+  spinnerClone.succeed('Template cloned')
+} catch (err) {
+  spinnerClone.fail('Failed to clone template')
+  throw err
+}
 
 // ─── Update layout.tsx with heading font ─────────────────────────────────────
 
-console.log('🔤 Configuring fonts...')
+const spinnerSetup = ora('Configuring project...').start()
 
 const layoutPath = path.join(projectPath, 'apps', 'frontend', 'app', 'layout.tsx')
 let layout = await fs.readFile(layoutPath, 'utf-8')
@@ -137,10 +144,10 @@ layout = layout
   .replaceAll('__PROJECT_NAME__', projectName)
 
 await fs.writeFile(layoutPath, layout)
+spinnerSetup.text = 'Configuring CSS variables...'
 
 // ─── Fill globals.css placeholders ───────────────────────────────────────────
 
-console.log('💅 Configuring CSS variables...')
 
 const cssPath = path.join(projectPath, 'apps', 'frontend', 'app', 'globals.css')
 let css = await fs.readFile(cssPath, 'utf-8')
@@ -186,10 +193,10 @@ if (isBoth) {
 }
 
 await fs.writeFile(cssPath, css)
+spinnerSetup.text = 'Configuring design tokens...'
 
 // ─── Fill figma-design-rules.md placeholders ─────────────────────────────────
 
-console.log('🎨 Configuring design tokens...')
 
 const figmaRulesPath = path.join(projectPath, 'docs', 'figma-design-rules.md')
 let figmaRules = await fs.readFile(figmaRulesPath, 'utf-8')
@@ -226,10 +233,10 @@ for (const [placeholder, value] of Object.entries(figmaReplacements)) {
 }
 
 await fs.writeFile(figmaRulesPath, figmaRules)
+spinnerSetup.text = 'Generating APP_KEY...'
 
 // ─── Setup backend .env ───────────────────────────────────────────────────────
 
-console.log('🔑 Generating APP_KEY...')
 
 const backendPath = path.join(projectPath, 'apps', 'backend')
 const envExamplePath = path.join(backendPath, '.env.example')
@@ -242,23 +249,24 @@ const generatedKey = crypto.randomBytes(32).toString('base64url')
 let envContent = await fs.readFile(envPath, 'utf-8')
 envContent = envContent.replace('APP_KEY=', `APP_KEY=${generatedKey}`)
 await fs.writeFile(envPath, envContent)
+spinnerSetup.text = 'Updating package.json...'
 
 // ─── Update root package.json ─────────────────────────────────────────────────
 
-console.log('📝 Updating package.json...')
 
 const rootPkgPath = path.join(projectPath, 'package.json')
 const rootPkg = await fs.readJson(rootPkgPath)
 rootPkg.name = projectName
 await fs.writeJson(rootPkgPath, rootPkg, { spaces: 2 })
+spinnerSetup.succeed('Project configured')
 
 // ─── Git init ─────────────────────────────────────────────────────────────────
 
-console.log('🗂️  Initializing git repository...')
-
+const spinnerGit = ora('Initializing git repository...').start()
 await execa('git', ['init'], { cwd: projectPath })
 await execa('git', ['add', '.'], { cwd: projectPath })
 await execa('git', ['commit', '-m', 'init: better system'], { cwd: projectPath })
+spinnerGit.succeed('Git repository initialized')
 
 // ─── Done ─────────────────────────────────────────────────────────────────────
 
